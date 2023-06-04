@@ -5,8 +5,13 @@
 
 <h1>HELOOOA</h1>
 
+<a href=" {% url 'create-room' %}">Create room</a>
 {% for room in rooms %}
-    <li>room: <a href="{% url 'room' room.id %}">{{ room.name }}</a></li> 
+    <div>
+        <a href=" {% url 'update-room' %}">update</a>
+        <a href=" {% url 'delete-room' room.id %}">delete</a>
+        <li>room: <a href="{% url 'room' room.id %}">{{ room.name }}</a></li> 
+    </div>
 {% endfor %}
     
 {% endblock content %}
