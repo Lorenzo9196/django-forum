@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-from .models import Room, Topic
+from .models import Room, Topic, Message
 from .forms import RoomForm
 
 # Create your views here.
@@ -43,12 +43,12 @@ def register(request):
             user.username = user.username.lower()
             user.save()
             messages.success(request, "Account created successfully")
-
+            login(request, user)
+            return redirect("home")
         else:
             messages.error(request, "Validate that all information is ok")
     context={'form': form,'page':page}
     return render(request, 'register_login.html', context)
-
 
 def home(request):
     q = request.GET.get('q') if request.GET.get('q')!= None else ''
@@ -58,10 +58,18 @@ def home(request):
     context = {'rooms': rooms, 'topics': topics, 'room_count': room_count}
     return render(request, 'home.html', context)
 
-
 def room(request,pk):
     room = Room.objects.get(id=pk)
-    return render(request, 'room.html', {'room': room})
+    room_messages = Message.objects.filter(room=pk).order_by('-created')
+    # room_messages = room.message_set.all().order_by('-created')  #forma valida
+    participants = room.participants.all()
+    if request.method == 'POST':
+        room_message = request.POST.get('body')
+        Message.objects.create(user=request.user, message=room_message, room=room)
+        room.participants.add(request.user)
+        return redirect('room', pk=room.id)
+    context = {'room': room, 'room_messages':room_messages, 'participants':participants}
+    return render(request, 'room.html', context)
 
 @login_required(login_url='login')
 def createRoom(request):
@@ -73,11 +81,13 @@ def createRoom(request):
           return redirect('home')
     return render(request, 'create_room.html', {'form': form})
 
-
 @login_required(login_url='login')
 def updateRoom(request,pk):
     room = Room.objects.get(id=pk)
     form = RoomForm(instance=room)
+    if request.user != room.user: # TODO: Decorator user owenrship
+        messages.error(request, "You are not authorized to delete this room")
+        return redirect('room', pk=room.id)
     if request.method == 'POST':
         form = RoomForm(request.POST, instance=room)
         if form.is_valid():
@@ -93,5 +103,17 @@ def deleteRoom(request,pk):
         room.delete()
         return redirect('home')
     return render(request, 'delete_room.html', {'room': room})
+
+@login_required(login_url='login')
+def deleteMessage(request,pk):
+    message = Message.objects.get(id=pk)
+
+    if request.user != message.user:
+        messages.error(request, "You are not authorized to delete this message")
+        return redirect('room', pk=message.room.id)
+    if request.method == 'POST':
+        message.delete()
+        return redirect('home')
+    return render(request, 'delete_message.html', {'message': message})
 
 
