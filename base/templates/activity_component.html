@@ -1,0 +1,19 @@
+<h3>Activity feed</h3>
+    
+    
+    {% for activity in recent_messages %}
+    <small>
+      <a href="{% url 'profile' activity.user.id %}">@{{activity.user}}</a>
+      {{activity.created|timesince}} ago
+    </small>
+    <h5>
+      {{activity.room.name}}
+    </h5>
+    <p>
+      {{activity.message}}
+    </p>
+    <hr>
+
+      
+    {% endfor %}
+      

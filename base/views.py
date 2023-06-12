@@ -53,9 +53,10 @@ def register(request):
 def home(request):
     q = request.GET.get('q') if request.GET.get('q')!= None else ''
     rooms = Room.objects.filter(Q(topic__topic__icontains=q) | Q(description__icontains=q) |  Q(name__icontains=q))
+    recent_messages = Message.objects.all().order_by('-created')[:5]
     topics = Topic.objects.all()
     room_count = rooms.count()
-    context = {'rooms': rooms, 'topics': topics, 'room_count': room_count}
+    context = {'rooms': rooms, 'topics': topics, 'room_count': room_count, 'recent_messages': recent_messages}
     return render(request, 'home.html', context)
 
 def room(request,pk):
@@ -71,14 +72,26 @@ def room(request,pk):
     context = {'room': room, 'room_messages':room_messages, 'participants':participants}
     return render(request, 'room.html', context)
 
+def profile(request,pk):
+    # q = request.GET.get('q') if request.GET.get('q')!= None else ''
+    user = User.objects.get(id=pk)
+    rooms = Room.objects.filter(Q(user_id__exact=user.id))
+    recent_messages = Message.objects.filter().order_by('-created')[:5]
+    topics = Topic.objects.all()
+    room_count = rooms.count()
+    context = {'rooms': rooms, 'topics': topics, 'room_count': room_count, 'recent_messages': recent_messages, 'user':user}
+    return render(request, 'profile.html', context)
+
 @login_required(login_url='login')
 def createRoom(request):
     form = RoomForm()
     if request.method == 'POST':
         form = RoomForm(request.POST)
         if form.is_valid():
-          form.save()
-          return redirect('home')
+            room = form.save(commit=False)
+            room.user = request.user
+            room.save()
+            return redirect('home')
     return render(request, 'create_room.html', {'form': form})
 
 @login_required(login_url='login')
